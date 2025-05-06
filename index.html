@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pomodoro App with Breaks</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 p-6 min-h-screen">
+  <div class="max-w-5xl mx-auto bg-white shadow rounded p-6">
+    <h1 class="text-2xl font-bold text-center mb-6">Pomodoro App with Breaks</h1>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <!-- Timer & Controls -->
+      <div class="space-y-4">
+        <div class="text-center">
+          <div id="sessionLabel" class="text-lg font-medium mb-1">Work Session</div>
+          <div id="timerDisplay" class="text-5xl font-mono">25:00</div>
+        </div>
+        <div class="flex justify-center gap-2">
+          <button onclick="startSession()" class="px-4 py-2 border">Start</button>
+          <button onclick="resetTimer()" class="px-4 py-2 border">Reset</button>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold">Tasks</h2>
+          <form onsubmit="addTask(event)" class="flex gap-2 mt-2">
+            <input id="taskInput" type="text" placeholder="Add a task" class="border px-2 py-1 flex-1" required>
+            <button class="border px-4">Add</button>
+          </form>
+          <ul id="taskList" class="space-y-2 mt-4 max-h-40 overflow-y-auto"></ul>
+        </div>
+      </div>
+
+      <!-- Progress Chart -->
+      <div>
+        <h2 class="text-xl font-semibold mb-2">Weekly Progress</h2>
+        <canvas id="progressChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let workDuration = 25 * 60
+    let shortBreak = 5 * 60
+    let longBreak = 15 * 60
+    let sessionCount = 0
+    let timeLeft = workDuration
+    let timer
+    let isBreak = false
+
+    const timerDisplay = document.getElementById('timerDisplay')
+    const sessionLabel = document.getElementById('sessionLabel')
+
+    const chartData = {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      datasets: [{
+        label: 'Work Sessions',
+        data: [0, 0, 0, 0, 0, 0, 0],
+        backgroundColor: 'rgba(96, 165, 250, 0.6)',
+        borderColor: 'rgba(37, 99, 235, 1)',
+        borderWidth: 1
+      }]
+    }
+
+    const chart = new Chart(document.getElementById('progressChart'), {
+      type: 'bar',
+      data: chartData,
+      options: {
+        scales: { y: { beginAtZero: true, stepSize: 1 } }
+      }
+    })
+
+    function updateDisplay(seconds) {
+      const min = Math.floor(seconds / 60)
+      const sec = seconds % 60
+      timerDisplay.textContent = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    }
+
+    function getDayIndex() {
+      const day = new Date().getDay()
+      return (day + 6) % 7
+    }
+
+    function startSession() {
+      clearInterval(timer)
+      timer = setInterval(() => {
+        timeLeft--
+        updateDisplay(timeLeft)
+
+        if (timeLeft <= 0) {
+          clearInterval(timer)
+          if (!isBreak) {
+            sessionCount++
+            chartData.datasets[0].data[getDayIndex()]++
+            chart.update()
+          }
+
+          if (isBreak) {
+            isBreak = false
+            sessionLabel.textContent = "Work Session"
+            timeLeft = workDuration
+          } else {
+            isBreak = true
+            sessionLabel.textContent = sessionCount % 4 === 0 ? "Long Break" : "Short Break"
+            timeLeft = sessionCount % 4 === 0 ? longBreak : shortBreak
+          }
+
+          updateDisplay(timeLeft)
+          startSession()
+        }
+      }, 1000)
+    }
+
+    function resetTimer() {
+      clearInterval(timer)
+      isBreak = false
+      timeLeft = workDuration
+      sessionLabel.textContent = "Work Session"
+      updateDisplay(timeLeft)
+    }
+
+    function addTask(e) {
+      e.preventDefault()
+      const input = document.getElementById('taskInput')
+      const li = document.createElement('li')
+      li.className = "flex justify-between items-center p-2 bg-gray-100 rounded"
+      li.innerHTML = `<span>${input.value}</span><button onclick="this.parentElement.remove()" class="px-2">✕</button>`
+      document.getElementById('taskList').appendChild(li)
+      input.value = ''
+    }
+
+    // Init
+    updateDisplay(timeLeft)
+  </script>
+</body>
+</html>
